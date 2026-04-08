@@ -17,25 +17,34 @@ client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 def get_gazete_content():
     try:
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
-        # Ana sayfadan günün .htm makale linklerini topla
-        response = requests.get("https://www.resmigazete.gov.tr", headers=headers, timeout=10, verify=False)
+        # Günün tarihine göre fihrist URL'si oluştur
+        tarih = datetime.now().strftime("%Y%m%d")
+        yil = datetime.now().strftime("%Y")
+        ay = datetime.now().strftime("%m")
+        fihrist_url = f"https://www.resmigazete.gov.tr/eskiler/{yil}/{ay}/{tarih}.htm"
+        print(f"DEBUG fihrist URL: {fihrist_url}")
+        response = requests.get(fihrist_url, headers=headers, timeout=15, verify=False)
+        print(f"DEBUG fihrist status: {response.status_code}")
         response.encoding = 'utf-8'
         soup = BeautifulSoup(response.content, 'html.parser')
+        # Sayfadaki tüm linkleri bul
         links = [
             a['href'] for a in soup.find_all('a', href=True)
-            if a['href'].startswith('https://www.resmigazete.gov.tr/eskiler/')
-            and a['href'].endswith('.htm')
+            if a['href'].endswith('.htm') and tarih in a['href']
         ]
-        if not links:
-            return "Gazete içeriği alınamadı: Günlük makale linki bulunamadı"
         print(f"DEBUG: {len(links)} makale linki bulundu")
-        for l in links[:5]:
-            print(f"DEBUG link: {l}")
-        # İlk 5 makaleyi çek ve metinlerini birleştir
+        # Link bulunamazsa fihrist sayfasının metnini kullan
+        if not links:
+            text = soup.get_text(separator=' ', strip=True)
+            print(f"DEBUG fihrist metin uzunluk: {len(text)}")
+            return text[:3000] if text else "Gazete içeriği alınamadı"
+        # İlk 5 makaleyi çek
         all_text = []
         for url in links[:5]:
+            if not url.startswith('http'):
+                url = f"https://www.resmigazete.gov.tr{url}"
             try:
-                r = requests.get(url, headers=headers, timeout=10, verify=False)
+                r = requests.get(url, headers=headers, timeout=15, verify=False)
                 r.encoding = 'utf-8'
                 s = BeautifulSoup(r.content, 'html.parser')
                 text = s.get_text(separator=' ', strip=True)

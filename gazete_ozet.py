@@ -16,19 +16,30 @@ client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
 def get_gazete_content():
     try:
-        url = "https://www.resmigazete.gov.tr"
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        }
-        response = requests.get(url, headers=headers, timeout=10, verify=False)
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+        # Ana sayfadan günün .htm makale linklerini topla
+        response = requests.get("https://www.resmigazete.gov.tr", headers=headers, timeout=10, verify=False)
         response.encoding = 'utf-8'
         soup = BeautifulSoup(response.content, 'html.parser')
-        content = soup.find('div', class_=['content', 'main', 'body'])
-        if content:
-            text = content.get_text(separator=' ', strip=True)[:2000]
-        else:
-            text = soup.get_text(separator=' ', strip=True)[:2000]
-        return text if text else "Gazete içeriği alınamadı"
+        links = [
+            a['href'] for a in soup.find_all('a', href=True)
+            if a['href'].startswith('https://www.resmigazete.gov.tr/eskiler/')
+            and a['href'].endswith('.htm')
+        ]
+        if not links:
+            return "Gazete içeriği alınamadı: Günlük makale linki bulunamadı"
+        # İlk 5 makaleyi çek ve metinlerini birleştir
+        all_text = []
+        for url in links[:5]:
+            try:
+                r = requests.get(url, headers=headers, timeout=10, verify=False)
+                r.encoding = 'utf-8'
+                s = BeautifulSoup(r.content, 'html.parser')
+                text = s.get_text(separator=' ', strip=True)
+                all_text.append(text[:800])
+            except Exception:
+                continue
+        return '\n\n'.join(all_text) if all_text else "Gazete içeriği alınamadı"
     except Exception as e:
         return f"Gazete çekilirken hata oluştu: {str(e)}"
 

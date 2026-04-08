@@ -46,6 +46,8 @@ def summarize_with_claude(text):
         )
         return message.content[0].text
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return f"Özet oluşturulamadı: {str(e)}"
 
 def send_telegram_message(message):

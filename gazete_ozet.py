@@ -55,7 +55,11 @@ def summarize_with_claude(text):
                 }
             ]
         )
-        return message.content[0].text
+        print(f"DEBUG response type: {type(message.content)}")
+        print(f"DEBUG response: {message.content}")
+        if isinstance(message.content, list):
+            return message.content[0].text
+        return str(message.content)
     except Exception as e:
         import traceback
         traceback.print_exc()

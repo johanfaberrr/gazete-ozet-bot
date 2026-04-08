@@ -60,7 +60,9 @@ def get_gazete_content():
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return f"Gazete çekilirken hata oluştu: {str(e)}"
+        msg = f"Gazete çekilirken hata oluştu: {str(e)}"
+        print(f"DEBUG hata mesajı: {msg}")
+        return msg
 
 def summarize_with_claude(text):
     try:
@@ -110,6 +112,7 @@ def main():
     print("📰 Gazete içeriği çekiliyor...")
     gazete_text = get_gazete_content()
     print(f"✅ İçerik çekildi ({len(gazete_text)} karakter)")
+    print(f"DEBUG içerik: {gazete_text[:200]}")
 
     print("🤖 Claude ile özet oluşturuluyor...")
     ozet = summarize_with_claude(gazete_text)

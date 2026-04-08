@@ -1,10 +1,13 @@
 import os
 import requests
 import anthropic
+import cloudscraper
 from datetime import datetime
 from bs4 import BeautifulSoup
 import urllib3
 urllib3.disable_warnings()
+
+scraper = cloudscraper.create_scraper()
 
 # API Anahtarları
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
@@ -23,7 +26,7 @@ def get_gazete_content():
         ay = datetime.now().strftime("%m")
         fihrist_url = f"https://www.resmigazete.gov.tr/eskiler/{yil}/{ay}/{tarih}.htm"
         print(f"DEBUG fihrist URL: {fihrist_url}")
-        response = requests.get(fihrist_url, headers=headers, timeout=15, verify=False)
+        response = scraper.get(fihrist_url, headers=headers, timeout=15, verify=False)
         print(f"DEBUG fihrist status: {response.status_code}")
         response.encoding = 'utf-8'
         soup = BeautifulSoup(response.content, 'html.parser')
@@ -44,7 +47,7 @@ def get_gazete_content():
             if not url.startswith('http'):
                 url = f"https://www.resmigazete.gov.tr{url}"
             try:
-                r = requests.get(url, headers=headers, timeout=15, verify=False)
+                r = scraper.get(url, headers=headers, timeout=15, verify=False)
                 r.encoding = 'utf-8'
                 s = BeautifulSoup(r.content, 'html.parser')
                 text = s.get_text(separator=' ', strip=True)

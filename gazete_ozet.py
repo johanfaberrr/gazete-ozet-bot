@@ -58,6 +58,8 @@ def get_gazete_content():
                 continue
         return '\n\n'.join(all_text) if all_text else "Gazete içeriği alınamadı"
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return f"Gazete çekilirken hata oluştu: {str(e)}"
 
 def summarize_with_claude(text):

@@ -1,18 +1,18 @@
 import os
 import requests
-import openai
+import anthropic
 from datetime import datetime
 from bs4 import BeautifulSoup
 import urllib3
 urllib3.disable_warnings()
 
 # API Anahtarları
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 
-# OpenAI ayarı
-openai.api_key = OPENAI_API_KEY
+# Anthropic client
+client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
 def get_gazete_content():
     try:
@@ -32,24 +32,19 @@ def get_gazete_content():
     except Exception as e:
         return f"Gazete çekilirken hata oluştu: {str(e)}"
 
-def summarize_with_openai(text):
+def summarize_with_claude(text):
     try:
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+        message = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=300,
             messages=[
                 {
-                    "role": "system",
-                    "content": "Sen Resmi Gazete haberlerini Türkçe olarak özetleyen bir yardımcısın. Kısa, öz ve anlaşılır özetler hazırla."
-                },
-                {
                     "role": "user",
-                    "content": f"Lütfen bu metni 2-3 paragrafta özetle:\n\n{text}"
+                    "content": f"Sen Resmi Gazete haberlerini Türkçe olarak özetleyen bir yardımcısın. Kısa, öz ve anlaşılır özetler hazırla.\n\nLütfen bu metni 2-3 paragrafta özetle:\n\n{text}"
                 }
-            ],
-            max_tokens=300,
-            temperature=0.7
+            ]
         )
-        return response.choices[0].message.content
+        return message.content[0].text
     except Exception as e:
         return f"Özet oluşturulamadı: {str(e)}"
 
@@ -75,15 +70,15 @@ def send_telegram_message(message):
 def main():
     print("🚀 Gazete Özet Bot Başlatılıyor...")
     print(f"⏰ Saat: {datetime.now()}")
-    
+
     print("📰 Gazete içeriği çekiliyor...")
     gazete_text = get_gazete_content()
     print(f"✅ İçerik çekildi ({len(gazete_text)} karakter)")
-    
-    print("🤖 OpenAI ile özet oluşturuluyor...")
-    ozet = summarize_with_openai(gazete_text)
+
+    print("🤖 Claude ile özet oluşturuluyor...")
+    ozet = summarize_with_claude(gazete_text)
     print("✅ Özet oluşturuldu")
-    
+
     tarih = datetime.now().strftime("%d.%m.%Y")
     telegram_message = f"""📰 <b>Resmi Gazete Günlük Özeti</b>
 📅 Tarih: {tarih}
@@ -92,7 +87,7 @@ def main():
 {ozet}
 
 🔗 Kaynak: https://www.resmigazete.gov.tr"""
-    
+
     print("📤 Telegram'a gönderiliyor...")
     send_telegram_message(telegram_message)
     print("✅ İşlem tamamlandı!")

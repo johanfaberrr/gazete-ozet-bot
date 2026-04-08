@@ -28,6 +28,9 @@ def get_gazete_content():
         ]
         if not links:
             return "Gazete içeriği alınamadı: Günlük makale linki bulunamadı"
+        print(f"DEBUG: {len(links)} makale linki bulundu")
+        for l in links[:5]:
+            print(f"DEBUG link: {l}")
         # İlk 5 makaleyi çek ve metinlerini birleştir
         all_text = []
         for url in links[:5]:
@@ -36,8 +39,10 @@ def get_gazete_content():
                 r.encoding = 'utf-8'
                 s = BeautifulSoup(r.content, 'html.parser')
                 text = s.get_text(separator=' ', strip=True)
+                print(f"DEBUG makale uzunluk: {len(text)}")
                 all_text.append(text[:800])
-            except Exception:
+            except Exception as e:
+                print(f"DEBUG makale hata: {e}")
                 continue
         return '\n\n'.join(all_text) if all_text else "Gazete içeriği alınamadı"
     except Exception as e:

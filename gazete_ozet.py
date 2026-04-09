@@ -28,6 +28,9 @@ def get_gazete_content():
         print(f"DEBUG fihrist URL: {fihrist_url}")
         response = scraper.get(fihrist_url, headers=headers, timeout=15, verify=False)
         print(f"DEBUG fihrist status: {response.status_code}")
+        if response.status_code != 200:
+            print(f"DEBUG: Beklenmeyen HTTP kodu {response.status_code}")
+            return None
         response.encoding = 'utf-8'
         soup = BeautifulSoup(response.content, 'html.parser')
         # Sayfadaki tüm linkleri bul
@@ -40,7 +43,7 @@ def get_gazete_content():
         if not links:
             text = soup.get_text(separator=' ', strip=True)
             print(f"DEBUG fihrist metin uzunluk: {len(text)}")
-            return text[:3000] if text else "Gazete içeriği alınamadı"
+            return text[:3000] if text else None
         # İlk 5 makaleyi çek
         all_text = []
         for url in links[:5]:
@@ -56,13 +59,12 @@ def get_gazete_content():
             except Exception as e:
                 print(f"DEBUG makale hata: {e}")
                 continue
-        return '\n\n'.join(all_text) if all_text else "Gazete içeriği alınamadı"
+        return '\n\n'.join(all_text) if all_text else None
     except Exception as e:
         import traceback
         traceback.print_exc()
-        msg = f"Gazete çekilirken hata oluştu: {str(e)}"
-        print(f"DEBUG hata mesajı: {msg}")
-        return msg
+        print(f"DEBUG hata: {str(e)}")
+        return None
 
 def summarize_with_claude(text):
     try:
@@ -111,6 +113,20 @@ def main():
 
     print("📰 Gazete içeriği çekiliyor...")
     gazete_text = get_gazete_content()
+
+    tarih = datetime.now().strftime("%d.%m.%Y")
+
+    if not gazete_text:
+        print("❌ Gazete içeriği alınamadı, hata mesajı gönderiliyor...")
+        telegram_message = f"""📰 <b>Resmi Gazete Günlük Özeti</b>
+📅 Tarih: {tarih}
+
+⚠️ Bugün Resmi Gazete içeriği alınamadı. Site erişilemez durumda olabilir.
+
+🔗 Manuel kontrol: https://www.resmigazete.gov.tr"""
+        send_telegram_message(telegram_message)
+        return
+
     print(f"✅ İçerik çekildi ({len(gazete_text)} karakter)")
     print(f"DEBUG içerik: {gazete_text[:200]}")
 
@@ -118,7 +134,6 @@ def main():
     ozet = summarize_with_claude(gazete_text)
     print("✅ Özet oluşturuldu")
 
-    tarih = datetime.now().strftime("%d.%m.%Y")
     telegram_message = f"""📰 <b>Resmi Gazete Günlük Özeti</b>
 📅 Tarih: {tarih}
 

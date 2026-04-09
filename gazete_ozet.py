@@ -17,33 +17,55 @@ TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 # Anthropic client
 client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
+def get_links_from_anasayfa(tarih, headers):
+    """Ana sayfadan günün makale linklerini çek."""
+    print("DEBUG: Ana sayfa deneniyor...")
+    response = scraper.get("https://www.resmigazete.gov.tr", headers=headers, timeout=15, verify=False)
+    print(f"DEBUG ana sayfa status: {response.status_code}")
+    if response.status_code != 200:
+        return []
+    response.encoding = 'utf-8'
+    soup = BeautifulSoup(response.content, 'html.parser')
+    links = [
+        a['href'] for a in soup.find_all('a', href=True)
+        if a['href'].endswith('.htm') and tarih in a['href']
+    ]
+    print(f"DEBUG ana sayfadan {len(links)} link bulundu")
+    return links
+
+def get_links_from_fihrist(tarih, yil, ay, headers):
+    """Fihrist sayfasından günün makale linklerini çek."""
+    fihrist_url = f"https://www.resmigazete.gov.tr/eskiler/{yil}/{ay}/{tarih}.htm"
+    print(f"DEBUG: Fihrist deneniyor: {fihrist_url}")
+    response = scraper.get(fihrist_url, headers=headers, timeout=15, verify=False)
+    print(f"DEBUG fihrist status: {response.status_code}")
+    if response.status_code != 200:
+        return []
+    response.encoding = 'utf-8'
+    soup = BeautifulSoup(response.content, 'html.parser')
+    links = [
+        a['href'] for a in soup.find_all('a', href=True)
+        if a['href'].endswith('.htm') and tarih in a['href']
+    ]
+    print(f"DEBUG fihristden {len(links)} link bulundu")
+    return links
+
 def get_gazete_content():
     try:
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
-        # Günün tarihine göre fihrist URL'si oluştur
         tarih = datetime.now().strftime("%Y%m%d")
         yil = datetime.now().strftime("%Y")
         ay = datetime.now().strftime("%m")
-        fihrist_url = f"https://www.resmigazete.gov.tr/eskiler/{yil}/{ay}/{tarih}.htm"
-        print(f"DEBUG fihrist URL: {fihrist_url}")
-        response = scraper.get(fihrist_url, headers=headers, timeout=15, verify=False)
-        print(f"DEBUG fihrist status: {response.status_code}")
-        if response.status_code != 200:
-            print(f"DEBUG: Beklenmeyen HTTP kodu {response.status_code}")
-            return None
-        response.encoding = 'utf-8'
-        soup = BeautifulSoup(response.content, 'html.parser')
-        # Sayfadaki tüm linkleri bul
-        links = [
-            a['href'] for a in soup.find_all('a', href=True)
-            if a['href'].endswith('.htm') and tarih in a['href']
-        ]
-        print(f"DEBUG: {len(links)} makale linki bulundu")
-        # Link bulunamazsa fihrist sayfasının metnini kullan
+
+        # Önce ana sayfadan dene, olmazsa fihrist sayfasından dene
+        links = get_links_from_anasayfa(tarih, headers)
         if not links:
-            text = soup.get_text(separator=' ', strip=True)
-            print(f"DEBUG fihrist metin uzunluk: {len(text)}")
-            return text[:3000] if text else None
+            links = get_links_from_fihrist(tarih, yil, ay, headers)
+
+        if not links:
+            print("DEBUG: Hiçbir kaynaktan link alınamadı")
+            return None
+
         # İlk 5 makaleyi çek
         all_text = []
         for url in links[:5]:
